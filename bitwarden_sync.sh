@@ -179,8 +179,10 @@ delete_with_progress() {
 
   echo "$LOG_PREFIX Preparing to delete $total $type..."
 
-  # Collect IDs into array
-  mapfile -t ids < <(jq -r "$jqpath" "$DEST_OUTPUT_FILE" 2>/dev/null || echo "")
+  # Disable 'exit on error' for jq/mapfile to avoid early termination
+  set +e
+  mapfile -t ids < <(jq -r "$jqpath" "$DEST_OUTPUT_FILE" 2>/dev/null)
+  set -e
 
   for id in "${ids[@]}"; do
     [ -z "$id" ] || [ "$id" = "null" ] && continue
@@ -190,7 +192,6 @@ delete_with_progress() {
       continue
     fi
 
-    # Actual deletion
     if bw --session "$BW_SESSION_DEST" delete -p "$type" "$id" >/dev/null 2>&1; then
       deleted_count=$((deleted_count + 1))
     else
@@ -207,13 +208,14 @@ delete_with_progress() {
   fi
 }
 
+
 # Delete folders → items → attachments
-delete_with_progress "folder" '.folders[]?.id' "$folders_total"
-delete_with_progress "item"   '.items[]?.id'   "$items_total"
-delete_with_progress "attachment" '.attachments[]?.id' "$attachments_total"
+delete_with_progress "folder" '.folders[]?.id' "$folders_total" || true
+delete_with_progress "item"   '.items[]?.id'   "$items_total" || true
+delete_with_progress "attachment" '.attachments[]?.id' "$attachments_total" || true
 
 echo "$LOG_PREFIX Item deletion complete."
-
+echo "$LOG_PREFIX Proceeding to restore/import stage..."
 # ------------------------
 # Restore latest backup
 # ------------------------
