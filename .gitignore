@@ -1,0 +1,16 @@
+---
+
+### 2️⃣ `.gitignore`
+
+```gitignore
+# Ignore logs and backups
+logs/
+backups/
+
+# Ignore encrypted password files
+*.enc
+*keyfile
+
+# Ignore any local temporary files
+*.tmp
+/tmp/*
