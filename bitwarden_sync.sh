@@ -8,6 +8,9 @@
 # Designed to be run via cron. DRY_RUN is disabled by default.
 # ------------------------
 
+# Change to working directory
+cd "$(dirname "$0")"
+
 # Load environment variables from .env if present
 if [ -f ".env" ]; then
   export $(grep -v '^#' .env | xargs)
