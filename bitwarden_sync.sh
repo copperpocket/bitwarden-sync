@@ -1,5 +1,4 @@
 #!/usr/bin/env bash
-PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 
 # ------------------------
 # Bitwarden Backup & Sync
@@ -8,6 +7,16 @@ PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 # Logs all output to ./bitwarden_sync.log (overwrites each run)
 # Designed to be run via cron. DRY_RUN is disabled by default.
 # ------------------------
+
+# Ensure all required binaries are found, even when run from cron.
+# Bitwarden CLI (`bw`), openssl, jq, and standard utilities rely on this PATH.
+PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+
+# Suppress harmless Node.js warnings from Bitwarden CLI.
+# The CLI is built on Node, and sometimes prints unhandled promise
+# rejections after logout or token refresh. These warnings do not
+# affect sync functionality.
+export NODE_OPTIONS="--no-warnings"
 
 # Base directory for script (absolute)
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
