@@ -8,16 +8,16 @@
 # Designed to be run via cron. DRY_RUN is disabled by default.
 # ------------------------
 
-# Change to working directory
-cd "$(dirname "$0")"
+# Base directory for script (absolute)
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 # Load environment variables from .env if present
-if [ -f ".env" ]; then
-  export $(grep -v '^#' .env | xargs)
+if [ -f "$SCRIPT_DIR/.env" ]; then
+  export $(grep -v '^#' "$SCRIPT_DIR/.env" | xargs)
 fi
 
 # Log everything to console and file (overwrite log each run)
-LOG_DIR="./logs"
+LOG_DIR="$SCRIPT_DIR/logs"
 mkdir -p "$LOG_DIR"
 LOG_FILE="$LOG_DIR/bitwarden_sync_$(date +%Y%m%d_%H%M%S).log"
 exec > >(tee "$LOG_FILE") 2>&1
@@ -33,7 +33,7 @@ IFS=$'\n\t'
 
 # === Configurable ===
 RATE_LIMIT_DELAY=0.1   # seconds to sleep between destructive API calls
-BACKUP_DIR="./backups"
+BACKUP_DIR="$SCRIPT_DIR/backups"
 LOG_PREFIX="[bitwarden-sync]"
 
 # ------------------------
@@ -52,24 +52,24 @@ export LC_CTYPE=C
 export LC_ALL=C
 
 # Decrypt archive password for backups
-export BW_TAR_PASS=$(openssl enc -d -aes-256-cbc -in bitwarden_tar_password.enc -pass file:bitwarden_tar_keyfile)
+export BW_TAR_PASS=$(openssl enc -d -aes-256-cbc -in "$SCRIPT_DIR/bitwarden_tar_password.enc" -pass file:"$SCRIPT_DIR/bitwarden_tar_keyfile")
 
 # ------------------------
 # Source Vault Configuration
 # ------------------------
 export BW_ACCOUNT_SOURCE="${BW_ACCOUNT_SOURCE:-}"
-BW_PASS_SOURCE=$(openssl enc -d -aes-256-cbc -in bitwarden_backup_password.enc -pass file:bitwarden_backup_keyfile)
+BW_PASS_SOURCE=$(openssl enc -d -aes-256-cbc -in "$SCRIPT_DIR/bitwarden_backup_password.enc" -pass file:"$SCRIPT_DIR/bitwarden_backup_keyfile")
 export BW_CLIENTID_SOURCE="${BW_CLIENTID_SOURCE:-}"
-BW_CLIENTSECRET_SOURCE=$(openssl enc -d -aes-256-cbc -in bitwarden_source_password.enc -pass file:bitwarden_source_keyfile)
+BW_CLIENTSECRET_SOURCE=$(openssl enc -d -aes-256-cbc -in "$SCRIPT_DIR/bitwarden_source_password.enc" -pass file:"$SCRIPT_DIR/bitwarden_source_keyfile")
 export BW_SERVER_SOURCE="${BW_SERVER_SOURCE:-}"
 
 # ------------------------
 # Destination Vault Configuration
 # ------------------------
 export BW_ACCOUNT_DEST="${BW_ACCOUNT_DEST:-}"
-BW_PASS_DEST=$(openssl enc -d -aes-256-cbc -in bitwarden_restore_password.enc -pass file:bitwarden_restore_keyfile)
+BW_PASS_DEST=$(openssl enc -d -aes-256-cbc -in "$SCRIPT_DIR/bitwarden_restore_password.enc" -pass file:"$SCRIPT_DIR/bitwarden_restore_keyfile")
 export BW_CLIENTID_DEST="${BW_CLIENTID_DEST:-}"
-BW_CLIENTSECRET_DEST=$(openssl enc -d -aes-256-cbc -in bitwarden_dest_password.enc -pass file:bitwarden_dest_keyfile)
+BW_CLIENTSECRET_DEST=$(openssl enc -d -aes-256-cbc -in "$SCRIPT_DIR/bitwarden_dest_password.enc" -pass file:"$SCRIPT_DIR/bitwarden_dest_keyfile")
 export BW_SERVER_DEST="${BW_SERVER_DEST:-}"
 
 mkdir -p "$BACKUP_DIR"
@@ -211,7 +211,6 @@ delete_with_progress() {
   fi
 }
 
-
 # Delete folders → items → attachments
 delete_with_progress "folder" '.folders[]?.id' "$folders_total" || true
 delete_with_progress "item"   '.items[]?.id'   "$items_total" || true
@@ -219,6 +218,7 @@ delete_with_progress "attachment" '.attachments[]?.id' "$attachments_total" || t
 
 echo "$LOG_PREFIX Item deletion complete."
 echo "$LOG_PREFIX Proceeding to restore/import stage..."
+
 # ------------------------
 # Restore latest backup
 # ------------------------
