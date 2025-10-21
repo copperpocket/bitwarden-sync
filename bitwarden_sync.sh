@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 
 # ------------------------
 # Bitwarden Backup & Sync
@@ -99,20 +100,20 @@ echo "$LOG_PREFIX Removing old JSON exports..."
 find "$BACKUP_DIR" -maxdepth 1 -type f -name "bw_export_*.json" -mtime +7 -print -exec rm -f {} \; || true
 
 echo "$LOG_PREFIX Logging out any previous sessions (ignore errors)..."
-bw logout 2>/dev/null || true
+/usr/local/bin/bw logout 2>/dev/null || true
 
 # Login and unlock source vault
 echo "$LOG_PREFIX Logging into Source Bitwarden Server..."
-bw config server "$BW_SERVER_SOURCE"
-bw login "$BW_ACCOUNT_SOURCE" --apikey --raw
+/usr/local/bin/bw config server "$BW_SERVER_SOURCE"
+/usr/local/bin/bw login "$BW_ACCOUNT_SOURCE" --apikey --raw
 
 echo "$LOG_PREFIX Unlocking source vault..."
-BW_SESSION_SOURCE=$(bw unlock "$BW_PASS_SOURCE" --raw)
+BW_SESSION_SOURCE=$(/usr/local/bin/bw unlock "$BW_PASS_SOURCE" --raw)
 echo "$BW_SESSION_SOURCE" >/tmp/bw_session_source.$$
 chmod 600 /tmp/bw_session_source.$$
 
 echo "$LOG_PREFIX Exporting all items from source vault to JSON..."
-bw --session "$BW_SESSION_SOURCE" export --format json --output "$SOURCE_OUTPUT_FILE_JSON"
+/usr/local/bin/bw --session "$BW_SESSION_SOURCE" export --format json --output "$SOURCE_OUTPUT_FILE_JSON"
 echo "$LOG_PREFIX Source export complete: $SOURCE_OUTPUT_FILE_JSON"
 
 # Dry-run info
@@ -149,15 +150,15 @@ DEST_EXPORT_OUTPUT_BASE="bw_vault_items_to_remove"
 DEST_OUTPUT_FILE="$BACKUP_DIR/${DEST_EXPORT_OUTPUT_BASE}${TIMESTAMP}.json"
 
 echo "$LOG_PREFIX Logging into Destination Bitwarden Server..."
-bw logout 2>/dev/null || true
-bw config server "$BW_SERVER_DEST"
-bw login "$BW_ACCOUNT_DEST" --apikey --raw >/tmp/bw_apikey_dest.$$ 2>/dev/null || true
-BW_SESSION_DEST=$(bw unlock "$BW_PASS_DEST" --raw)
+/usr/local/bin/bw logout 2>/dev/null || true
+/usr/local/bin/bw config server "$BW_SERVER_DEST"
+/usr/local/bin/bw login "$BW_ACCOUNT_DEST" --apikey --raw >/tmp/bw_apikey_dest.$$ 2>/dev/null || true
+BW_SESSION_DEST=$(/usr/local/bin/bw unlock "$BW_PASS_DEST" --raw)
 echo "$BW_SESSION_DEST" >/tmp/bw_session_dest.$$
 chmod 600 /tmp/bw_session_dest.$$
 
 echo "$LOG_PREFIX Exporting current items from destination vault..."
-bw --session "$BW_SESSION_DEST" export --format json --output "$DEST_OUTPUT_FILE"
+/usr/local/bin/bw --session "$BW_SESSION_DEST" export --format json --output "$DEST_OUTPUT_FILE"
 
 folders_total=$(jq '.folders | length' "$DEST_OUTPUT_FILE" 2>/dev/null || echo 0)
 items_total=$(jq '.items | length' "$DEST_OUTPUT_FILE" 2>/dev/null || echo 0)
@@ -195,7 +196,7 @@ delete_with_progress() {
       continue
     fi
 
-    if bw --session "$BW_SESSION_DEST" delete -p "$type" "$id" >/dev/null 2>&1; then
+    if /usr/local/bin/bw --session "$BW_SESSION_DEST" delete -p "$type" "$id" >/dev/null 2>&1; then
       deleted_count=$((deleted_count + 1))
     else
       failed_count=$((failed_count + 1))
@@ -237,14 +238,14 @@ if [ "$DRY_RUN" -eq 1 ]; then
   echo "$LOG_PREFIX Would import JSON: $DEST_LATEST_BACKUP_JSON"
 else
   echo "$LOG_PREFIX ✅ Importing backup into destination vault: $DEST_LATEST_BACKUP_JSON"
-  bw --session "$BW_SESSION_DEST" import bitwardenjson "$DEST_LATEST_BACKUP_JSON"
+  /usr/local/bin/bw --session "$BW_SESSION_DEST" import bitwardenjson "$DEST_LATEST_BACKUP_JSON"
 fi
 
 # Cleanup temporary files
 rm -f "$DEST_OUTPUT_FILE" "$DEST_LATEST_BACKUP_JSON"
 echo "$LOG_PREFIX ### Restore - End ###"
 
-bw logout >/dev/null 2>&1 || true
+/usr/local/bin/bw logout >/dev/null 2>&1 || true
 
 # Unset sensitive variables
 unset BW_CLIENTID BW_CLIENTSECRET BW_TAR_PASS
